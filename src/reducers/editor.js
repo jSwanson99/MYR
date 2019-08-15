@@ -4,7 +4,6 @@ import Myr from "../myr/Myr";
 
 const initial_state = {
     text: "",
-    savedText: "",
     objects: [],
     assets: [],
     message: {
@@ -123,13 +122,13 @@ export default function editor(state = initial_state, action) {
                 message: message,
 
             };
+
         case types.EDITOR_UPDATE_SAVEDTEXT:
             return {
                 ...state,
                 savedText: action.savedText,
             };
-
         default:
             return state;
     }
-} 
+}
