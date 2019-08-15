@@ -82,16 +82,6 @@ export function fetchScene(id, uid = "anon") {
 }
 
 /**
- * @function - Sends a signal to the reducer to change the state of editorChange and update the text
- *
- * @returns - reducer action obj with action type
- */
-
-export function isEditorChange(editorChange, text){
-    return {type: types.EDITOR_CHANGE, editorChange, text};
-}
-
-/**
 * @function - Sends a signal to the reducer to update the savedText when user try to save or open scene/course
 *
 * @returns - reducer action obj with action type
@@ -117,6 +107,5 @@ export default {
     fetchScene,
     addPassword,
     getCursorState,
-    isEditorChange,
     updateSavedText,
 }; 

@@ -10,8 +10,7 @@ const initial_state = {
     message: {
         text: "",
         time: 0
-    },
-    editorChange: false,
+    }
 };
 
 /**
@@ -90,7 +89,6 @@ export default function editor(state = initial_state, action) {
                 ...initial_state,
                 text: action.text,
                 savedText: state.savedText,
-                editorChange: state.editorChange
             };
 
         case types.EDITOR_RECOVER:
@@ -125,18 +123,10 @@ export default function editor(state = initial_state, action) {
                 message: message,
 
             };
-        case types.EDITOR_CHANGE:
-            return{
-                ...state,
-                text: action.text,
-                editorChange: action.editorChange,
-            };
-
         case types.EDITOR_UPDATE_SAVEDTEXT:
             return {
                 ...state,
                 savedText: action.savedText,
-                editorChange: false,
             };
 
         default:
