@@ -117,12 +117,16 @@ class CursorPopup extends Component {
         let editorDoc = window.ace.edit("ace-editor").getSession().doc;
 
         //Checks for a function body click
+        console.log("Looking for function click");
         let isInFunctionBody = this.detectFunctionBody(this.removeComments(editorDoc.$lines.slice(0, editorDoc.$lines.length)), breakpoint);
         if(isInFunctionBody) {return isInFunctionBody;}
         
+        console.log("Looking for loop click");
         //Checks for a click inside of loop(s)
         let isInLoop = this.detectLoops(this.removeComments(editorDoc.$lines.slice(0, editorDoc.$lines.length)), breakpoint);
         if(isInLoop) {return [isInLoop, "loop"];}
+
+        console.log("Normal click found");
         //Handles a click outside of a function & loop
         return this.handleDefaultClick(editorDoc, breakpoint);
     }
@@ -410,6 +414,7 @@ class CursorPopup extends Component {
                         textArr[i] = textArr[i].slice(0, textArr[i].indexOf("/*"));
                         textArr[j] = textArr[j].slice(textArr[j].indexOf("*/") + 2, textArr[j].length);
                         i = j;
+                        break;
                     //Multiline comment is not terminated within the breakpoint
                     } else if(j === textArr.length - 1) {
                         for(let k = i + 1; k <= j; k ++) {
@@ -437,6 +442,9 @@ class CursorPopup extends Component {
                 }
             }
         }
+
+        console.log("after multine removal");
+        console.log(textArr);
         return textArr;
     }
 
