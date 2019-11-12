@@ -47,9 +47,6 @@ class CursorPopup extends Component {
                 let param = data[2];
                 let textArr = data[3];
 
-                //console.log(text);
-                console.log(type);
-
                 //If we clicked on text not in a function or a loop
                 if(type === "normal") {
                     // eslint-disable-next-line
@@ -191,7 +188,6 @@ class CursorPopup extends Component {
                         if(i + 1 <= breakpoint && breakpoint <= j + 1){
                             start = i;
                             end = j;
-                            console.log("x")
                             textArr.splice(start, 0, "resetCursor();"); //Resets cursor before function body
                             textArr.splice(start, 0, `let ${arr} = [];`);  //Creates array
                             textArr.splice(start + 2, 1);
@@ -340,7 +336,7 @@ class CursorPopup extends Component {
                 for(let j = i + 1; j < textArr.length; j ++) {
                     if(textArr[j].indexOf("{") !== -1) {
                         if(hasLoop(j))
-                            extraCurlyCounter ++;
+                        {extraCurlyCounter ++;}
                         else if(textArr[j].indexOf("{") !== -1 && textArr[j].indexOf("}") !== -1) {
                             //Inline object
                         } else {
@@ -349,21 +345,17 @@ class CursorPopup extends Component {
                         }
                     } else if(textArr[j].indexOf("}") !== -1  && extraCurlyCounter !== 0) {
                         if(insideOfObjectBraces) 
-                            insideOfObjectBraces = false;
+                        {insideOfObjectBraces = false;}
                         else 
-                            extraCurlyCounter --;
+                        {extraCurlyCounter --;}
                     } else if((textArr[j].indexOf("}") !== -1 && extraCurlyCounter === 0) && (i + 1 <= breakpoint && breakpoint <= j + 1)) { 
                         start = i;
                         if(numLoops === 0){
-                            console.log("adding array to line", start)
-                            console.log(start);
-                            console.log([...textArr])
                             textArr.splice(start, 0, `let ${counter} = [];`);  //Creates array
                             textArr.splice(start+2, 0, `${counter}.push(JSON.parse(JSON.stringify(getCursor())));`);    //Stores value at beginning of each loop iteration in it
                             i += 2;
                             breakpoint += 2;
                         } else {
-                            console.log(start)
                             textArr.splice(start+1, 0, `${counter}.push(JSON.parse(JSON.stringify(getCursor())));`);    //Stores value at beginning of each loop iteration in it
                             i ++;
                             breakpoint ++;
@@ -380,36 +372,29 @@ class CursorPopup extends Component {
 
         let extraCurlyCounter = 0;
         endOfOuterLoop = -1;
-        console.log(numLoops);
 
         if(numLoops > 0) {
             for(let i = 0; i < textArr.length && i <= breakpoint; i ++) {
                 if(hasLoop(i)) {
                     extraCurlyCounter = 0;
-                    console.log("found loop", i);
                     for(let j = i + 1; j < textArr.length; j ++) {
                         if(textArr[j].indexOf("{") !== -1) {
                             if(hasLoop(j)) {
-                                console.log("incremented ecc", extraCurlyCounter, j);
                                 extraCurlyCounter ++;
                             } else if(textArr[j].indexOf("{") !== -1 && textArr[j].indexOf("}") !== -1){
                                 //Inline object
                             } else {
                                 //Multiline object
-                                console.log("inside of ob braces", j)
                                 insideOfObjectBraces = true;
                             }
                         } else if(textArr[j].indexOf("}") !== -1  && extraCurlyCounter !== 0) {
                             if(insideOfObjectBraces) {
-                                console.log("left ob braces", j)
                                 insideOfObjectBraces = false;
                             }
                             else {
-                                console.log("decremented curly counter", extraCurlyCounter, j)
                                 extraCurlyCounter --;
                             }
                         } else if((textArr[j].indexOf("}") !== -1 && extraCurlyCounter === 0) && (i + 1 <= breakpoint && breakpoint <= j + 1)){
-                            console.log("hit end of loop at", j)
                             endOfOuterLoop = j;
                             break;
                         }
@@ -419,14 +404,8 @@ class CursorPopup extends Component {
                     }
                 }
             }
-
-            console.log(endOfOuterLoop);
             textArr.splice(endOfOuterLoop + 1, 0, `${counter}.push(JSON.parse(JSON.stringify(getCursor())));`);  //All values get returned at end
             textArr.splice(endOfOuterLoop + 2, 0, `return ${counter};`);  //All values get returned at end
-            
-
-            console.log(textArr);
-
             text = textArr.join("\n");
             // eslint-disable-next-line
             let func = Function(`'use strict'; ${text}`);
