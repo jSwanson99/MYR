@@ -272,6 +272,8 @@ class CursorPopup extends Component {
             enteredValues.set(this.state.params[i], val);
         }
 
+        console.log(enteredValues);
+
         for(let i = 0; i < textArr.length && i <= this.state.breakpoint; i ++) {
             if(textArr[i].indexOf("function") !== -1 || textArr[i].indexOf("=>") !== -1) {
                 let extraCurlyCounter = 0;
@@ -290,29 +292,45 @@ class CursorPopup extends Component {
             }
         }
         
+        console.log(start, end);
+        let tempBreakpoint = this.state.breakpoint;
+
         for(let i = start; i <= end; i ++) {
             for(let k = 0; k < this.state.params.length; k ++) {
                 const formalParam = this.state.params[k];
                 const enteredArg = enteredValues.get(this.state.params[k]);
                 if(textArr[i].indexOf(formalParam) !== -1 && enteredArg !== null) {
-                    textArr[i] = textArr[i].replace(formalParam, enteredArg);
+                    if(enteredArg.indexOf("{") !== -1 && textArr[start].indexOf(enteredArg) === -1) {
+                        textArr.splice(start, 0, `let ${formalParam} = ${enteredArg};`);
+                        tempBreakpoint++;
+                    } else if(enteredArg.indexOf("{") === -1){
+                        textArr[i] = textArr[i].replace(formalParam, enteredArg);
+                    }
                 } 
             }
         }
 
-        const diff = this.detectFunctionBody(textArr, this.state.breakpoint)[0];
+        console.log(textArr);
+        
+        try {
+            console.log()
+            const diff = this.detectFunctionBody(textArr, tempBreakpoint)[0];
 
-        window.setTimeout(
-            () => {
-                this.setState({
-                    obj: diff,
-                    arr: null,
-                    isArr: false,
-                    index: 0,
-                    maxIndex: 0,
-                    isFunc: true,
-                });
-            }, 0);
+            window.setTimeout(
+                () => {
+                    this.setState({
+                        obj: diff,
+                        arr: null,
+                        isArr: false,
+                        index: 0,
+                        maxIndex: 0,
+                        isFunc: true,
+                        breakpoint: tempBreakpoint
+                    });
+                }, 0);
+        } catch(e) {
+            console.error("Something went wrong with the cursor popup!\n", e);
+        }
     }
 
     detectLoops(textArr, breakpoint) {
