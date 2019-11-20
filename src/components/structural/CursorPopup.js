@@ -117,22 +117,25 @@ class CursorPopup extends Component {
         let editorDoc = window.ace.edit("ace-editor").getSession().doc;
 
         //Checks for a function body click
-        let isInFunctionBody = this.detectFunctionBody(this.removeComments(editorDoc.$lines.slice(0, editorDoc.$lines.length)), breakpoint);
+        let isInFunctionBody = this.detectFunctionBody(this.prepText(editorDoc.$lines.slice(0, editorDoc.$lines.length)), breakpoint);
         if(isInFunctionBody) {
+            console.log("Function found");
             return isInFunctionBody;
         }
         //Checks for a click inside of loop(s)
-        let isInLoop = this.detectLoops(this.removeComments(editorDoc.$lines.slice(0, editorDoc.$lines.length)), breakpoint);
+        let isInLoop = this.detectLoops(this.prepText(editorDoc.$lines.slice(0, editorDoc.$lines.length)), breakpoint);
         if(isInLoop) {
+            console.log("Loop found");
             return [isInLoop, "loop"];
         }
 
+        console.log("Loop found");
         //Handles a click outside of a function & loop
         return this.handleDefaultClick(editorDoc, breakpoint);
     }
     
     handleDefaultClick(editorDoc, breakpoint) {
-        let textContainingState = this.removeComments(editorDoc.$lines.slice(0, breakpoint));
+        let textContainingState = this.prepText(editorDoc.$lines.slice(0, breakpoint));
         textContainingState.unshift("resetCursor();"); //Resets cursor before running code
         textContainingState.push("return getCursor();"); //Now will return the cursor value after the breakpoint
 
@@ -140,7 +143,7 @@ class CursorPopup extends Component {
          * to prevent an error from being thrown if there was a function called 
          * that was defined after the breakpoint  */
         let extraInfoText = editorDoc.$lines.slice(breakpoint, editorDoc.$lines.length);
-        extraInfoText = this.removeComments(extraInfoText);
+        extraInfoText = this.prepText(extraInfoText);
 
         const modifiedTextArr = textContainingState.concat(extraInfoText);
         return [modifiedTextArr.join("\n"), "normal"];
@@ -170,6 +173,9 @@ class CursorPopup extends Component {
         const arr = "anOverlyComplicatedVariableName";
         const unmodArr = [...textArr];
         let start, end;
+
+        console.log(textArr);
+
         for(let i = 0; i < textArr.length && i <= breakpoint; i ++) {
             if(textArr[i].indexOf("function") !== -1 || textArr[i].indexOf("=>") !== -1) {
                 if((textArr[i].indexOf("function") !== -1 || textArr[i].indexOf("=>") !== -1) && (textArr[i].indexOf("{") === -1)){
@@ -180,12 +186,13 @@ class CursorPopup extends Component {
                 }
                 let extraCurlyCounter = 0;
                 for(let j = i; j < textArr.length; j ++) {
-                    if(j !== i && textArr[j].indexOf("{") !== -1) {
+                    if(j !== i && textArr[j].indexOf("{") !== -1 && textArr[j].indexOf('}') === -1) {
                         extraCurlyCounter ++;
-                    } else if(textArr[j].indexOf("}") !== -1  && extraCurlyCounter !== 0) {
+                    } else if(textArr[j].indexOf('{') === -1 && textArr[j].indexOf("}") !== -1  && extraCurlyCounter !== 0) {
                         extraCurlyCounter --;
-                    } else if(textArr[j].indexOf("}") !== -1 && extraCurlyCounter === 0) {
+                    } else if(textArr[j].indexOf('{') === -1 && textArr[j].indexOf("}") !== -1 && extraCurlyCounter === 0) {
                         if(i + 1 <= breakpoint && breakpoint <= j + 1){
+                            console.log("Found function at ", i, j);
                             start = i;
                             end = j;
                             textArr.splice(start, 0, "resetCursor();"); //Resets cursor before function body
@@ -203,6 +210,7 @@ class CursorPopup extends Component {
                                 // eslint-disable-next-line
                                 func = Function(`'use strict'; ${text}`);
                                 beforeAfter = func();
+                                console.log(beforeAfter[0], beforeAfter[1]);
                                 diff = this.getObjDiff(beforeAfter[0], beforeAfter[1]);
                                 if(diff)
                                 {return [diff, "func"];}
@@ -212,6 +220,7 @@ class CursorPopup extends Component {
                                 // eslint-disable-next-line
                                 func = Function(`'use strict'; ${text}`);
                                 beforeAfter = func();
+                                console.log(beforeAfter[0], beforeAfter[1]);
                                 diff = this.getObjDiff(beforeAfter[0], beforeAfter[1]);
                                 if(diff) {return [diff, "func"];}  
                                 //Params don't need to be returned because they aren't used in
@@ -234,7 +243,7 @@ class CursorPopup extends Component {
     findParams() {
         let editorDoc = window.ace.edit("ace-editor").getSession().doc;
         let breakpoint = window.ace.edit("ace-editor").getSelectionRange().start.row + 1;
-        let textArr = this.removeComments(editorDoc.$lines.slice(0, editorDoc.$lines.length));
+        let textArr = this.prepText(editorDoc.$lines.slice(0, editorDoc.$lines.length));
 
         for(let i = 0; i < textArr.length && i <= breakpoint; i ++) {
             if(textArr[i].indexOf("function") !== -1 || textArr[i].indexOf("=>") !== -1) {
@@ -432,7 +441,15 @@ class CursorPopup extends Component {
         return null;
     }
     
-    removeComments(textArr) {
+    //Removes comments and comments out return statements (the chnages don't affect the actual text in the editor)
+    prepText(textArr) {
+        //Comments out return statements
+        for(let i = 0; i < textArr.length; i ++) {
+            if(textArr[i].indexOf("return") !== -1) {
+                textArr[i] = "//" + textArr[i];
+            }
+        }
+        
         //Removes normal comments
         for(let i = 0; i < textArr.length; i ++) {
             let index = textArr[i].indexOf("//");
