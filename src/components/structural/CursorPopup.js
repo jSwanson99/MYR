@@ -195,6 +195,9 @@ class CursorPopup extends Component {
                             console.log("Found function at ", i, j);
                             start = i;
                             end = j;
+
+                            const varArr = this.findVars([...textArr], start, end);
+
                             textArr.splice(start, 0, "resetCursor();"); //Resets cursor before function body
                             textArr.splice(start, 0, `let ${arr} = [];`);  //Creates array
                             textArr.splice(start + 2, 1);
@@ -238,6 +241,39 @@ class CursorPopup extends Component {
             }
         }
         return null;
+    }
+
+    findVars = (textArr, start, end) => {
+        for(let i = start; i <= end; i ++) {
+            let startInd = textArr[i].indexOf("let");
+            if(startInd !== -1) {
+                startInd += 3;
+                console.log(textArr[startInd]);
+                let endInd = textArr[i].indexOf(" ", startInd + 1);
+                
+                console.log(endInd);   
+                if(textArr[i].indexOf("=", startInd) !== -1 || textArr[i].indexOf(",", startInd) !== -1 ||textArr[i].indexOf(";", startInd) !== -1) {
+                    let nearestDelim = textArr[i].indexOf("=", startInd) - 1;
+
+                    if(nearestDelim === -1 || nearestDelim > textArr[i].indexOf(',', startInd) !== -1)
+                        nearestDelim = textArr[i].indexOf(",", startInd) - 1;
+
+                    if(nearestDelim === -1 || nearestDelim > textArr[i].indexOf(';', startInd) !== -1)
+                        nearestDelim = textArr[i].indexOf(";", startInd) - 1;
+                
+                    if(nearestDelim > 0 && nearestDelim < endInd)
+                        endInd = nearestDelim;
+                }
+
+                let varName;
+                if(endInd === -1) {
+                    varName = textArr[i].slice(startInd).trim();
+                } else {
+                    varName = textArr[i].slice(startInd, endInd).trim();
+                }  
+                console.log(varName);
+            }
+        }
     }
 
     findParams() {
