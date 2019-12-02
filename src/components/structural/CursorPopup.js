@@ -243,6 +243,7 @@ class CursorPopup extends Component {
         return null;
     }
     
+    //Finds variables local to a segment of text
     findVars = (textArr, start, end) => {
         const hasDelims = (i, startPos, delims) => {
             for(let j = 0; j < delims.length; j ++) {
@@ -254,59 +255,54 @@ class CursorPopup extends Component {
 
         let indices = []; //Array of start and end pairs
 
+        //Loop through segment of text
         for(let i = start; i <= end; i ++) {
+
+            //If a variable is declared
             if(hasDelims(i , 0, ["let"])) {
                 console.log(`variables declared on line: ${i}`);
                 let startInd = textArr[i].indexOf("let") + 3;
-                let endInd;        
-                if(hasDelims(i, startInd, ['=', ',', ';'])) {
-                    let curDelim;
+                let endInd = textArr[i].indexOf(" ", startInd + 1);     
+                
+                if(endInd === -1)
+                    endInd = textArr[i].indexOf('=', startInd + 1);
+                if(endInd === -1)
+                    endInd = textArr[i].indexOf(';', startInd + 1);
+                if(endInd === -1)
+                    endInd = textArr[i].length;
 
-                    while(startInd !== -1 && hasDelims(i, startInd, [',', '='])) {
-                        console.log(startInd);
-                        curDelim = textArr[i].indexOf("=", startInd);
-                        if(hasDelims(i, startInd, [',']) && (curDelim === -1 || curDelim > textArr[i].indexOf(',', startInd)) ) {
-                            curDelim = textArr[i].indexOf(",", startInd);    
-                            if(textArr[i].slice(startInd).trim() === "") {
-                                indices.push({
-                                    line: i,
-                                    start: startInd,
-                                    end: textArr[i].length - 1
-                                });
-                            }else if(curDelim > startInd){
-                                indices.push({
-                                    line: i,
-                                    start: startInd,
-                                    end: curDelim
-                                });
-                            }
-                        }
-                        if(startInd == curDelim)
-                            break;
-                        startInd = curDelim + 1;
+                indices.push({
+                    line: i,
+                    start: startInd,
+                    end: endInd
+                });
+
+                startInd = endInd;
+                
+                //If the line has more than one variable on it
+                while(hasDelims(i, startInd, [','])) {
+                    let curDelim;   
+                    startInd = textArr[i].indexOf(',', startInd) + 1;
+
+                    if(hasDelims(i, startInd + 1, [',', '=', ';'])) {
+                        curDelim = textArr[i].indexOf('=', startInd);
+                        if(curDelim === -1 || (textArr[i].indexOf(',', startInd) < curDelim))
+                            curDelim = textArr[i].indexOf(',', startInd);
+                    } else {
+                        curDelim = textArr[i].length;
                     }
-
-                    if(curDelim === -1 || curDelim > textArr[i].indexOf(';', startInd) - 1 !== -1)
-                    {
-                        curDelim = textArr[i].indexOf(";", startInd);
                         indices.push({
                             line: i,
                             start: startInd,
                             end: curDelim
                         });
                     }
-
-
-                    if(curDelim > 0 && curDelim < endInd)
-                        endInd = curDelim;
-
-                    if(startInd === -1) break;
-                }
             }
         }
+
         for(let i = 0; i < indices.length; i ++) {
-                    console.log(textArr[indices[i].line].slice(indices[i].start, indices[i].end).trim())
-                }
+            console.log(textArr[indices[i].line].slice(indices[i].start, indices[i].end).trim())
+        }
     }
 
     findParams() {
