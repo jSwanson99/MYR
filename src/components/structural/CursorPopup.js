@@ -259,15 +259,17 @@ class CursorPopup extends Component {
         for(let i = start; i <= end; i ++) {
 
             //If a variable is declared
-            if(hasDelims(i , 0, ["let"])) {
+            if(hasDelims(i , 0, ["let", "const"])) {
                 console.log(`variables declared on line: ${i}`);
                 let startInd = textArr[i].indexOf("let") + 3;
+                if(textArr[i].indexOf("let") === -1)
+                    startInd = textArr[i].indexOf("const") + 5;
                 let endInd = textArr[i].indexOf(" ", startInd + 1);     
                 
-                if(endInd === -1)
+                if(endInd === -1 || (textArr[i].indexOf('=', startInd + 1) < endInd))
                     endInd = textArr[i].indexOf('=', startInd + 1);
-                if(endInd === -1)
-                    endInd = textArr[i].indexOf(';', startInd + 1);
+                if(endInd === -1 || (textArr[i].indexOf(',', startInd + 1) < endInd))
+                    endInd = textArr[i].indexOf(',', startInd + 1);
                 if(endInd === -1)
                     endInd = textArr[i].length;
 
@@ -281,22 +283,27 @@ class CursorPopup extends Component {
                 
                 //If the line has more than one variable on it
                 while(hasDelims(i, startInd, [','])) {
-                    let curDelim;   
                     startInd = textArr[i].indexOf(',', startInd) + 1;
+                    endInd = textArr[i].indexOf(' ', startInd + 1);
+                    if( (endInd !== -1 && textArr[i].indexOf(',', startInd + 1) < endInd) || (endInd === -1)) {
+                        endInd = textArr[i].indexOf(',', startInd + 1);
+                    }
 
-                    if(hasDelims(i, startInd + 1, [',', '=', ';'])) {
-                        curDelim = textArr[i].indexOf('=', startInd);
-                        if(curDelim === -1 || (textArr[i].indexOf(',', startInd) < curDelim))
-                            curDelim = textArr[i].indexOf(',', startInd);
-                    } else {
-                        curDelim = textArr[i].length;
+                    if( (endInd !== -1 && textArr[i].indexOf('=', startInd + 1) < endInd)|| (endInd === -1)) {
+                        endInd = textArr[i].indexOf('=', startInd + 1);
                     }
-                        indices.push({
-                            line: i,
-                            start: startInd,
-                            end: curDelim
-                        });
+
+                    if(endInd === -1) {
+                        endInd = textArr[i].length;
                     }
+
+                    indices.push({
+                        line: i,
+                        start: startInd,
+                        end: endInd
+                    });
+                    startInd = endInd;
+                }
             }
         }
 
