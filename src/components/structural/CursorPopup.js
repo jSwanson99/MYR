@@ -192,11 +192,12 @@ class CursorPopup extends Component {
                         extraCurlyCounter --;
                     } else if(textArr[j].indexOf('{') === -1 && textArr[j].indexOf("}") !== -1 && extraCurlyCounter === 0) {
                         if(i + 1 <= breakpoint && breakpoint <= j + 1){
-                            console.log("Found function at ", i, j);
                             start = i;
                             end = j;
 
                             const varArr = this.findVars([...textArr], start, end);
+                            
+                            this.refactorVars([...textArr], [...varArr], start, end);
 
                             textArr.splice(start, 0, "resetCursor();"); //Resets cursor before function body
                             textArr.splice(start, 0, `let ${arr} = [];`);  //Creates array
@@ -213,7 +214,6 @@ class CursorPopup extends Component {
                                 // eslint-disable-next-line
                                 func = Function(`'use strict'; ${text}`);
                                 beforeAfter = func();
-                                console.log(beforeAfter[0], beforeAfter[1]);
                                 diff = this.getObjDiff(beforeAfter[0], beforeAfter[1]);
                                 if(diff)
                                 {return [diff, "func"];}
@@ -222,8 +222,7 @@ class CursorPopup extends Component {
                             try {
                                 // eslint-disable-next-line
                                 func = Function(`'use strict'; ${text}`);
-                                beforeAfter = func();
-                                console.log(beforeAfter[0], beforeAfter[1]);
+                                beforeAfter = func();   
                                 diff = this.getObjDiff(beforeAfter[0], beforeAfter[1]);
                                 if(diff) {return [diff, "func"];}  
                                 //Params don't need to be returned because they aren't used in
@@ -260,7 +259,6 @@ class CursorPopup extends Component {
 
             //If a variable is declared
             if(hasDelims(i , 0, ["let", "const"])) {
-                console.log(`variables declared on line: ${i}`);
                 let startInd = textArr[i].indexOf("let") + 3;
                 if(textArr[i].indexOf("let") === -1)
                     startInd = textArr[i].indexOf("const") + 5;
@@ -307,9 +305,39 @@ class CursorPopup extends Component {
             }
         }
 
+        let varArr = [];
         for(let i = 0; i < indices.length; i ++) {
-            console.log(textArr[indices[i].line].slice(indices[i].start, indices[i].end).trim())
+            varArr.push(textArr[indices[i].line].slice(indices[i].start, indices[i].end).trim())
         }
+        return varArr;
+    }
+
+    //Refactors variable names to avoid name collisions when the function gets flattened
+    refactorVars = (textArr, varArr, start, end) => {
+        const prefix = "__extendedPrefixToAvoidCollisions__";
+        console.log(varArr);
+        const prefixedVars = varArr.map( el => {
+            return prefix.concat(el);
+        });
+        console.log(prefixedVars)
+
+        //Check all lines
+        for(let j = start + 1; j <= end ; j ++) {
+            let str = textArr[j];
+            //Check the line for each variable
+            for(let i = 0; i < varArr.length; i ++) {
+                if(str.indexOf(varArr[i]) !== -1) { 
+                    if(!(str.slice(str.indexOf(varArr[i]) + varArr[i].length).match(/[a-zA-Z_$][0-9a-zA-Z_$]*/))
+                        && (str.indexOf(varArr[i]) + varArr[i].length) < str.length)     
+                        break;
+                    //Replace it if it exists
+                    str = str.replace(varArr[i], prefixedVars[i]); 
+                    console.log(str);
+                }
+            }
+            textArr[j] = str;
+        }
+        console.log(textArr);
     }
 
     findParams() {
@@ -353,8 +381,6 @@ class CursorPopup extends Component {
             enteredValues.set(this.state.params[i], val);
         }
 
-        console.log(enteredValues);
-
         for(let i = 0; i < textArr.length && i <= this.state.breakpoint; i ++) {
             if(textArr[i].indexOf("function") !== -1 || textArr[i].indexOf("=>") !== -1) {
                 let extraCurlyCounter = 0;
@@ -372,8 +398,6 @@ class CursorPopup extends Component {
                 }
             }
         }
-        
-        console.log(start, end);
         let tempBreakpoint = this.state.breakpoint;
 
         for(let i = start; i <= end; i ++) {
@@ -390,11 +414,8 @@ class CursorPopup extends Component {
                 } 
             }
         }
-
-        console.log(textArr);
         
         try {
-            console.log()
             const diff = this.detectFunctionBody(textArr, tempBreakpoint)[0];
 
             window.setTimeout(
