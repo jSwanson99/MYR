@@ -47,6 +47,8 @@ class CursorPopup extends Component {
                 let param = data[2];
                 let textArr = data[3];
 
+                this.props.render();
+                
                 //If we clicked on text not in a function or a loop
                 if(type === "normal") {
                     // eslint-disable-next-line
@@ -101,12 +103,12 @@ class CursorPopup extends Component {
                     });
                 }
             }
+            
         };
 
         window.addEventListener("click", () => {
             try {
                 getGutterClick();
-                this.props.render();
             } catch (e) {
                 console.error(e);
             }
