@@ -8,6 +8,7 @@ import MyrTour from "./MyrTour.js";
 import ProjectView from "./ProjectView.js";
 import CourseSelect from "../../courses/CourseSelect.js";
 import WelcomeScreen from "../WelcomeScreen.js";
+import CursorPopup from "../CursorPopup.js";
 
 import * as layoutTypes from "../../../constants/LayoutTypes.js";
 
@@ -570,6 +571,7 @@ class Header extends Component {
         const referenceMode = this.props.layoutType === layoutTypes.REFERENCE;
         return (
             <header className="App-header align-items-center ">
+                <CursorPopup render = {this.handleRender}/>
                 <div className="col-9 d-flex justify-content-start" style={{ paddingLeft: 0 }}>
                     <Sidebar scene={this.props.scene} nameScene={this.props.sceneActions.nameScene} >
                         <Button

@@ -6,7 +6,6 @@ import "aframe-extras/dist/aframe-extras.min.js";
 import "aframe-physics-system";
 import "aframe-environment-component";
 import * as THREE from "three";
-import CursorPopup from "./CursorPopup";
 
 /**
  * @summary - The View component return the aframe representation of the scene. This
@@ -227,7 +226,7 @@ class View extends Component {
         return (
             !this.state.welcomeOpen ?
                 <a-scene physics="debug: false; friction: 3; restitution: .3;" embedded debug="false">
-                    <CursorPopup/>
+                    
                     <a-assets>
                         <a-mixin id="checkpoint"></a-mixin>
                         <a-mixin id="checkpoint-hovered" color="#6CEEB5"></a-mixin>

@@ -100,13 +100,13 @@ class CursorPopup extends Component {
                         noDiff: false
                     });
                 }
-                
             }
         };
 
         window.addEventListener("click", () => {
             try {
                 getGutterClick();
+                this.props.render();
             } catch (e) {
                 console.error(e);
             }
@@ -268,6 +268,8 @@ class CursorPopup extends Component {
                     endInd = textArr[i].indexOf('=', startInd + 1);
                 if(endInd === -1 || (textArr[i].indexOf(',', startInd + 1) < endInd))
                     endInd = textArr[i].indexOf(',', startInd + 1);
+                if(endInd === -1 || (textArr[i].indexOf(';', startInd + 1) < endInd))
+                    endInd = textArr[i].indexOf(';', startInd + 1);
                 if(endInd === -1)
                     endInd = textArr[i].length;
 
@@ -277,18 +279,22 @@ class CursorPopup extends Component {
                     end: endInd
                 });
 
-                startInd = endInd;
+                startInd = endInd;  
                 
                 //If the line has more than one variable on it
                 while(hasDelims(i, startInd, [','])) {
                     startInd = textArr[i].indexOf(',', startInd) + 1;
                     endInd = textArr[i].indexOf(' ', startInd + 1);
-                    if( (endInd !== -1 && textArr[i].indexOf(',', startInd + 1) < endInd) || (endInd === -1)) {
-                        endInd = textArr[i].indexOf(',', startInd + 1);
+                    if( (endInd !== -1 && textArr[i].indexOf(',', startInd) < endInd) || (endInd === -1)) {
+                        endInd = textArr[i].indexOf(',', startInd);
                     }
 
-                    if( (endInd !== -1 && textArr[i].indexOf('=', startInd + 1) < endInd)|| (endInd === -1)) {
-                        endInd = textArr[i].indexOf('=', startInd + 1);
+                    if( (endInd !== -1 && textArr[i].indexOf('=', startInd) < endInd) || (endInd === -1)) {
+                        endInd = textArr[i].indexOf('=', startInd);
+                    }
+
+                    if( (endInd !== -1 && textArr[i].indexOf(';', startInd) < endInd) || (endInd === -1)) {
+                        endInd = textArr[i].indexOf(';', startInd);
                     }
 
                     if(endInd === -1) {
@@ -321,14 +327,17 @@ class CursorPopup extends Component {
         });
         console.log(prefixedVars)
 
+        
         //Check all lines
         for(let j = start + 1; j <= end ; j ++) {
             let str = textArr[j];
             //Check the line for each variable
             for(let i = 0; i < varArr.length; i ++) {
                 if(str.indexOf(varArr[i]) !== -1) { 
-                    if(!(str.slice(str.indexOf(varArr[i]) + varArr[i].length).match(/[a-zA-Z_$][0-9a-zA-Z_$]*/))
-                        && (str.indexOf(varArr[i]) + varArr[i].length) < str.length)     
+                      /*Avoids a variable named "i" causing other variable
+                        with "i" in them to be prefixed (and other names)*/
+                    if(!(str.slice(str.indexOf(varArr[i]) + varArr[i].length).match(/[a-zA-Z_$][0-9a-zA-Z_$]*/)
+                        && (str.indexOf(varArr[i] + varArr[i].length) < str.length)))    
                         break;
                     //Replace it if it exists
                     str = str.replace(varArr[i], prefixedVars[i]); 
