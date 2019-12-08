@@ -254,7 +254,7 @@ class CursorPopup extends Component {
             return false;
         };
 
-        let indices = []; //Array of start and end pairs
+        let varArr= [];
 
         //Loop through segment of text
         for(let i = start; i <= end; i ++) {
@@ -262,9 +262,39 @@ class CursorPopup extends Component {
             //If a variable is declared
             if(hasDelims(i , 0, ["let", "const"])) {
                 let startInd = textArr[i].indexOf("let") + 3;
-                if(textArr[i].indexOf("let") === -1)
+                if(textArr[i].indexOf("let") === -1) {
                     startInd = textArr[i].indexOf("const") + 5;
-                let endInd = textArr[i].indexOf(" ", startInd + 1);     
+                }
+
+                let varName = "";
+                let varStarted = false;
+
+                for(let j = startInd; j < textArr[i].length; j ++) {
+                    if(textArr[i][j].match(/[a-zA-Z_$][0-9a-zA-Z_$]*/)) {
+                        varStarted = true;
+                        varName = varName.concat(textArr[i][j]);
+                    } else if(varStarted) {
+                        varArr.push(varName);
+                        varStarted = false;
+                        varName = "";
+                    }
+                }
+
+                if(varStarted) {
+                    varArr.push(varName);
+                }
+            }
+        }
+
+        for(let i = 0; i < varArr.length; i ++) {
+            console.log(varArr[i]);
+        }
+
+        return varArr;
+    }
+
+    /*
+let endInd = textArr[i].indexOf(" ", startInd + 1);     
                 
                 if(endInd === -1 || (textArr[i].indexOf('=', startInd + 1) < endInd))
                     endInd = textArr[i].indexOf('=', startInd + 1);
@@ -287,6 +317,7 @@ class CursorPopup extends Component {
                 while(hasDelims(i, startInd, [','])) {
                     startInd = textArr[i].indexOf(',', startInd) + 1;
                     endInd = textArr[i].indexOf(' ', startInd + 1);
+                    
                     if( (endInd !== -1 && textArr[i].indexOf(',', startInd) < endInd) || (endInd === -1)) {
                         endInd = textArr[i].indexOf(',', startInd);
                     }
@@ -310,15 +341,7 @@ class CursorPopup extends Component {
                     });
                     startInd = endInd;
                 }
-            }
-        }
-
-        let varArr = [];
-        for(let i = 0; i < indices.length; i ++) {
-            varArr.push(textArr[indices[i].line].slice(indices[i].start, indices[i].end).trim())
-        }
-        return varArr;
-    }
+    */
 
     //Refactors variable names to avoid name collisions when the function gets flattened
     refactorVars = (textArr, varArr, start, end) => {
@@ -338,12 +361,17 @@ class CursorPopup extends Component {
                 if(str.indexOf(varArr[i]) !== -1) { 
                       /*Avoids a variable named "i" causing other variable
                         with "i" in them to be prefixed (and other names)*/
-                    if(!(str.slice(str.indexOf(varArr[i]) + varArr[i].length).match(/[a-zA-Z_$][0-9a-zA-Z_$]*/)
-                        && (str.indexOf(varArr[i] + varArr[i].length) < str.length)))    
+                    if(!(str.slice(str.indexOf(varArr[i]) + varArr[i].length).match(/[a-zA-Z_$][0-9a-zA-Z_$]*/))) {  
+                        console.log(textArr[i][varArr[i] + varArr[i].length]);  
                         break;
+                    }
                     //Replace it if it exists
                     str = str.replace(varArr[i], prefixedVars[i]); 
                     console.log(str);
+                }
+
+                if(str.slice(str.length - varArr[i]) === varArr[i]) {
+                    str = str.replace(varArr[i], prefixedVars[i]); 
                 }
             }
             textArr[j] = str;
