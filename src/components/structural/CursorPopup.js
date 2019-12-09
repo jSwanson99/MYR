@@ -255,8 +255,25 @@ class CursorPopup extends Component {
         };
 
         let varArr= [];
+        let varName = "";
+        let varStarted = false;
 
-        //Loop through segment of text
+        //Parse variables from header
+        if(textArr[start].indexOf(')') - 1 !== textArr[start].indexOf('(')) {
+            //We have arguements being passed in
+            for(let i = textArr[start].indexOf('(') + 1; i < textArr[start].length; i ++) {
+                if(textArr[start][i].match(/[a-zA-Z_$][0-9a-zA-Z_$]*/)) {
+                    varStarted = true;
+                    varName = varName.concat(textArr[start][i]);
+                } else if(varStarted) {
+                    varArr.push(varName);
+                    varStarted = false;
+                    varName = "";
+                }
+            }
+        }
+
+        //Parse variable from body
         for(let i = start; i <= end; i ++) {
 
             //If a variable is declared
@@ -265,10 +282,6 @@ class CursorPopup extends Component {
                 if(textArr[i].indexOf("let") === -1) {
                     startInd = textArr[i].indexOf("const") + 5;
                 }
-
-                let varName = "";
-                let varStarted = false;
-
                 for(let j = startInd; j < textArr[i].length; j ++) {
                     if(textArr[i][j].match(/[a-zA-Z_$][0-9a-zA-Z_$]*/)) {
                         varStarted = true;
@@ -293,56 +306,6 @@ class CursorPopup extends Component {
         return varArr;
     }
 
-    /*
-let endInd = textArr[i].indexOf(" ", startInd + 1);     
-                
-                if(endInd === -1 || (textArr[i].indexOf('=', startInd + 1) < endInd))
-                    endInd = textArr[i].indexOf('=', startInd + 1);
-                if(endInd === -1 || (textArr[i].indexOf(',', startInd + 1) < endInd))
-                    endInd = textArr[i].indexOf(',', startInd + 1);
-                if(endInd === -1 || (textArr[i].indexOf(';', startInd + 1) < endInd))
-                    endInd = textArr[i].indexOf(';', startInd + 1);
-                if(endInd === -1)
-                    endInd = textArr[i].length;
-
-                indices.push({
-                    line: i,
-                    start: startInd,
-                    end: endInd
-                });
-
-                startInd = endInd;  
-                
-                //If the line has more than one variable on it
-                while(hasDelims(i, startInd, [','])) {
-                    startInd = textArr[i].indexOf(',', startInd) + 1;
-                    endInd = textArr[i].indexOf(' ', startInd + 1);
-                    
-                    if( (endInd !== -1 && textArr[i].indexOf(',', startInd) < endInd) || (endInd === -1)) {
-                        endInd = textArr[i].indexOf(',', startInd);
-                    }
-
-                    if( (endInd !== -1 && textArr[i].indexOf('=', startInd) < endInd) || (endInd === -1)) {
-                        endInd = textArr[i].indexOf('=', startInd);
-                    }
-
-                    if( (endInd !== -1 && textArr[i].indexOf(';', startInd) < endInd) || (endInd === -1)) {
-                        endInd = textArr[i].indexOf(';', startInd);
-                    }
-
-                    if(endInd === -1) {
-                        endInd = textArr[i].length;
-                    }
-
-                    indices.push({
-                        line: i,
-                        start: startInd,
-                        end: endInd
-                    });
-                    startInd = endInd;
-                }
-    */
-
     //Refactors variable names to avoid name collisions when the function gets flattened
     refactorVars = (textArr, varArr, start, end) => {
         const prefix = "__extendedPrefixToAvoidCollisions__";
@@ -352,21 +315,66 @@ let endInd = textArr[i].indexOf(" ", startInd + 1);
         });
         console.log(prefixedVars)
 
-        
-        //Check all lines
+        //Check header for var matches
+        if(textArr[start].indexOf(')') - 1 !== textArr[start].indexOf('(')) {
+            //We have arguements being passed in
+
+            let success;
+            for(let j = 0; j < varArr.length; j ++) {
+                let str = textArr[start];
+                let vari = varArr[j];
+                console.log("looking for", vari)
+                let ind = 0;
+                success = false;
+
+                do {
+                    let nextChar = str.slice(str.indexOf(vari, ind) + vari.length, str.indexOf(vari, ind) + vari.length + 1);
+                        
+                    //Attempt to slice out the variable
+                    let temp = str.slice(str.indexOf(vari, ind), str.indexOf(vari, ind) + vari.length)
+
+                    console.log(temp);
+                    console.log(nextChar);
+                    //Make sure the variable doesn't continue into the next varaible
+                    if(temp === vari && !(nextChar.match(/[a-zA-Z_$][0-9a-zA-Z_$]*/)) && nextChar !== "") {
+                        let firstHalf = str.slice(0, str.indexOf(vari, ind));
+                        let refactoredVar = prefixedVars[j];
+                        let secondHalf = str.slice(str.indexOf(vari, ind) + vari.length);
+                        
+                        //Rebuilds string with refactored variable
+                        str = firstHalf + refactoredVar + secondHalf;
+                        textArr[start] = str;
+                        console.log(textArr[start]);
+                        success = true;
+                    }
+                    ind += vari.length;
+                } while(str.indexOf(vari, ind) !== -1 && ind < str.length && !success);
+            }
+        }
+
+        //Check function body for var matches
         for(let j = start + 1; j <= end ; j ++) {
             let str = textArr[j];
             //Check the line for each variable
             for(let i = 0; i < varArr.length; i ++) {
                 if(str.indexOf(varArr[i]) !== -1) { 
-                      /*Avoids a variable named "i" causing other variable
-                        with "i" in them to be prefixed (and other names)*/
-                    if(!(str.slice(str.indexOf(varArr[i]) + varArr[i].length).match(/[a-zA-Z_$][0-9a-zA-Z_$]*/))) {  
-                        console.log(textArr[i][varArr[i] + varArr[i].length]);  
-                        break;
+                    //Slices what might me a match to the variable to a temp var
+                    let temp = str.slice(str.indexOf(varArr[i]), str.indexOf(varArr[i]) + varArr[i].length)
+                    console.log(temp);
+                    
+                    //Gets the character after the end of the potential match
+                    let nextChar = str.slice(str.indexOf(varArr[i]) + varArr[i].length, str.indexOf(varArr[i]) + varArr[i].length + 1);
+                    console.log(nextChar);
+
+                    //Checks to see if the temp var is actually a match
+                    if(temp === varArr[i] && !(nextChar.match(/[a-zA-Z_$][0-9a-zA-Z_$]*/))) {
+                        let firstHalf = str.slice(0, str.indexOf(varArr[i]));
+                        let refactoredVar = prefixedVars[i];
+                        let secondHalf = str.slice(str.indexOf(varArr[i]) + varArr[i].length);
+                        
+                        //Rebuilds string with refactored variable
+                        str = firstHalf + refactoredVar + secondHalf;
                     }
-                    //Replace it if it exists
-                    str = str.replace(varArr[i], prefixedVars[i]); 
                     console.log(str);
                 }
 
