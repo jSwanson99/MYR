@@ -322,7 +322,7 @@ class CursorPopup extends Component {
     //Refactors variable names to avoid name collisions when the function gets flattened
     refactorVars = (textArr, varArr, start, end) => {
         const checkBorderLetters = (nextChar, prevChar) => {
-            if(!(nextChar.match(/[a-zA-Z_$][0-9a-zA-Z_$]*/)) && !(prevChar.match(/[a-zA-Z_$][0-9a-zA-Z_$]*/)))
+            if((nextChar === undefined || !nextChar.match(/[a-zA-Z_$][0-9a-zA-Z_$]*/)) && !(prevChar.match(/[a-zA-Z_$][0-9a-zA-Z_$]*/)))
                 return true;
             return false;
         }
@@ -371,25 +371,35 @@ class CursorPopup extends Component {
             //Check the line for each variable
             for(let i = 0; i < varArr.length; i ++) {
                 if(str.indexOf(varArr[i]) !== -1) { 
-                    //Slices what might me a match to the variable to a temp var
-                    let temp = str.slice(str.indexOf(varArr[i]), str.indexOf(varArr[i]) + varArr[i].length)
-                    console.log(temp);
+                    let temp, nextChar, prevChar, index;
+                    for(let ind = str.indexOf(varArr[i]); ind < str.length; ind += varArr[i].length) {
+                        prevChar = null;
+                        nextChar = null;
+                        //Slices what might me a match to the variable to a temp var
+                        temp = str.slice(str.indexOf(varArr[i], ind), str.indexOf(varArr[i], ind) + varArr[i].length)
+                        
+                        //Gets the character after the end of the potential match
+                        if(str.indexOf(varArr[i], ind) + varArr[i].length + 1 <= str.length)
+                            nextChar = str.slice(str.indexOf(varArr[i], ind) + varArr[i].length, str.indexOf(varArr[i], ind) + varArr[i].length + 1);                    
+                        
+                        prevChar = str.slice(str.indexOf(varArr[i], ind) - 1, str.indexOf(varArr[i], ind));
                     
-                    //Gets the character after the end of the potential match
-                    let nextChar = str.slice(str.indexOf(varArr[i]) + varArr[i].length, str.indexOf(varArr[i]) + varArr[i].length + 1);
-                    let prevChar = str.slice(str.indexOf(varArr[i]) - 1, str.indexOf(varArr[i]) + varArr[i].length + 1);
-                    console.log(nextChar);
-
+                        if(temp === varArr[i] && checkBorderLetters(nextChar, prevChar)) {
+                            index = ind;
+                            break;
+                        }
+                    }
+                   
                     //Checks to see if the temp var is actually a match
                     if(temp === varArr[i] && checkBorderLetters(nextChar, prevChar)) {
-                        let firstHalf = str.slice(0, str.indexOf(varArr[i]));
+                        console.log(`refactoring ${varArr[i]}`)
+                        let firstHalf = str.slice(0, str.indexOf(varArr[i], index));
                         let refactoredVar = prefixedVars[i];
-                        let secondHalf = str.slice(str.indexOf(varArr[i]) + varArr[i].length);
+                        let secondHalf = str.slice(str.indexOf(varArr[i], index) + varArr[i].length);
                         
                         //Rebuilds string with refactored variable
                         str = firstHalf + refactoredVar + secondHalf;
                     }
-                    console.log(str);
                 }
 
                 if(str.slice(str.length - varArr[i]) === varArr[i]) {
