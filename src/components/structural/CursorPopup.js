@@ -199,7 +199,7 @@ class CursorPopup extends Component {
 
                             const varArr = this.findVars([...textArr], start, end);
                             
-                            this.refactorVars([...textArr], [...varArr], start, end);
+                            textArr = this.refactorVars([...textArr], [...varArr], start, end);
 
                             textArr.splice(start, 0, "resetCursor();"); //Resets cursor before function body
                             textArr.splice(start, 0, `let ${arr} = [];`);  //Creates array
@@ -256,7 +256,7 @@ class CursorPopup extends Component {
 
         let varArr= [];
         let varName = "";
-        let varStarted = false;
+        let varStarted = false, rValStarted = false;
 
         //Parse variables from header
         if(textArr[start].indexOf(')') - 1 !== textArr[start].indexOf('(')) {
@@ -275,7 +275,6 @@ class CursorPopup extends Component {
 
         //Parse variable from body
         for(let i = start; i <= end; i ++) {
-
             //If a variable is declared
             if(hasDelims(i , 0, ["let", "const"])) {
                 let startInd = textArr[i].indexOf("let") + 3;
@@ -283,13 +282,27 @@ class CursorPopup extends Component {
                     startInd = textArr[i].indexOf("const") + 5;
                 }
                 for(let j = startInd; j < textArr[i].length; j ++) {
-                    if(textArr[i][j].match(/[a-zA-Z_$][0-9a-zA-Z_$]*/)) {
+                    if(varStarted && !textArr[i][j].match(/[a-zA-Z_$][0-9a-zA-Z_$]*/)) {
+                        if(!rValStarted) {
+                            console.log(`Pushing ${varName}`);
+                            varArr.push(varName);
+                            varStarted = false;
+                            varName = "";
+                        } else {
+                            console.log(`Terminated rVal after hitting ${textArr[i][j]}`);
+                            varStarted = false;
+                            varName = "";
+                            rValStarted = false;
+                        }
+                    } else if(textArr[i][j].match(/[a-zA-Z_$][0-9a-zA-Z_$]*/)) {
                         varStarted = true;
+                        console.log(`Appending ${textArr[i][j]} to ${varName}`);
                         varName = varName.concat(textArr[i][j]);
-                    } else if(varStarted) {
-                        varArr.push(varName);
-                        varStarted = false;
-                        varName = "";
+                    } 
+
+                    if(textArr[i][j] === '.' || textArr[i][j] === '=') {
+                        console.log(`Set rVal flag after hitting ${textArr[i][j]}`);
+                        rValStarted = true;
                     }
                 }
 
@@ -308,35 +321,35 @@ class CursorPopup extends Component {
 
     //Refactors variable names to avoid name collisions when the function gets flattened
     refactorVars = (textArr, varArr, start, end) => {
+        const checkBorderLetters = (nextChar, prevChar) => {
+            if(!(nextChar.match(/[a-zA-Z_$][0-9a-zA-Z_$]*/)) && !(prevChar.match(/[a-zA-Z_$][0-9a-zA-Z_$]*/)))
+                return true;
+            return false;
+        }
+
         const prefix = "__extendedPrefixToAvoidCollisions__";
-        console.log(varArr);
+        console.log("Variable list: ", varArr);
         const prefixedVars = varArr.map( el => {
             return prefix.concat(el);
         });
-        console.log(prefixedVars)
+        console.log("Prefixed variables: ", prefixedVars)
 
         //Check header for var matches
         if(textArr[start].indexOf(')') - 1 !== textArr[start].indexOf('(')) {
             //We have arguements being passed in
-
-            let success;
             for(let j = 0; j < varArr.length; j ++) {
                 let str = textArr[start];
                 let vari = varArr[j];
-                console.log("looking for", vari)
+                console.log("***looking for", vari)
                 let ind = 0;
-                success = false;
 
                 do {
                     let nextChar = str.slice(str.indexOf(vari, ind) + vari.length, str.indexOf(vari, ind) + vari.length + 1);
-                        
+                    let prevChar = str.slice(str.indexOf(vari, ind) - 1, str.indexOf(vari, ind) + vari.length + 1);
                     //Attempt to slice out the variable
                     let temp = str.slice(str.indexOf(vari, ind), str.indexOf(vari, ind) + vari.length)
-
-                    console.log(temp);
-                    console.log(nextChar);
                     //Make sure the variable doesn't continue into the next varaible
-                    if(temp === vari && !(nextChar.match(/[a-zA-Z_$][0-9a-zA-Z_$]*/)) && nextChar !== "") {
+                    if(temp === vari && checkBorderLetters(nextChar, prevChar) && nextChar !== "") {
                         let firstHalf = str.slice(0, str.indexOf(vari, ind));
                         let refactoredVar = prefixedVars[j];
                         let secondHalf = str.slice(str.indexOf(vari, ind) + vari.length);
@@ -345,10 +358,10 @@ class CursorPopup extends Component {
                         str = firstHalf + refactoredVar + secondHalf;
                         textArr[start] = str;
                         console.log(textArr[start]);
-                        success = true;
+                        break;
                     }
                     ind += vari.length;
-                } while(str.indexOf(vari, ind) !== -1 && ind < str.length && !success);
+                } while(str.indexOf(vari, ind) !== -1 && ind < str.length);
             }
         }
 
@@ -364,10 +377,11 @@ class CursorPopup extends Component {
                     
                     //Gets the character after the end of the potential match
                     let nextChar = str.slice(str.indexOf(varArr[i]) + varArr[i].length, str.indexOf(varArr[i]) + varArr[i].length + 1);
+                    let prevChar = str.slice(str.indexOf(varArr[i]) - 1, str.indexOf(varArr[i]) + varArr[i].length + 1);
                     console.log(nextChar);
 
                     //Checks to see if the temp var is actually a match
-                    if(temp === varArr[i] && !(nextChar.match(/[a-zA-Z_$][0-9a-zA-Z_$]*/))) {
+                    if(temp === varArr[i] && checkBorderLetters(nextChar, prevChar)) {
                         let firstHalf = str.slice(0, str.indexOf(varArr[i]));
                         let refactoredVar = prefixedVars[i];
                         let secondHalf = str.slice(str.indexOf(varArr[i]) + varArr[i].length);
@@ -385,6 +399,7 @@ class CursorPopup extends Component {
             textArr[j] = str;
         }
         console.log(textArr);
+        return textArr;
     }
 
     findParams() {
