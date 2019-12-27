@@ -254,6 +254,10 @@ class CursorPopup extends Component {
             return false;
         };
 
+        for(let i = start; i <= end; i ++) {
+            console.log(textArr[i]);
+        }
+
         let varArr= [];
         let varName = "";
         let varStarted = false, rValStarted = false;
@@ -266,6 +270,7 @@ class CursorPopup extends Component {
                     varStarted = true;
                     varName = varName.concat(textArr[start][i]);
                 } else if(varStarted) {
+                    console.log(`Pushed ${varName} from header`);
                     varArr.push(varName);
                     varStarted = false;
                     varName = "";
@@ -273,10 +278,12 @@ class CursorPopup extends Component {
             }
         }
 
+
         //Parse variable from body
-        for(let i = start; i <= end; i ++) {
+        for(let i = start + 1; i <= end; i ++) {
             //If a variable is declared
             if(hasDelims(i , 0, ["let", "const"])) {
+                console.log(textArr[i]);
                 let startInd = textArr[i].indexOf("let") + 3;
                 if(textArr[i].indexOf("let") === -1) {
                     startInd = textArr[i].indexOf("const") + 5;
@@ -284,8 +291,10 @@ class CursorPopup extends Component {
                 for(let j = startInd; j < textArr[i].length; j ++) {
                     if(varStarted && !textArr[i][j].match(/[a-zA-Z_$][0-9a-zA-Z_$]*/)) {
                         if(!rValStarted) {
-                            console.log(`Pushing ${varName}`);
-                            varArr.push(varName);
+                            if(!varArr.includes(varName)) {
+                                console.log(`Pushing ${varName}`);
+                                varArr.push(varName);
+                            }
                             varStarted = false;
                             varName = "";
                         } else {
@@ -298,7 +307,33 @@ class CursorPopup extends Component {
                         varStarted = true;
                         console.log(`Appending ${textArr[i][j]} to ${varName}`);
                         varName = varName.concat(textArr[i][j]);
-                    } 
+                    } else if(rValStarted && !textArr[i][j].match(/[a-zA-Z_$][0-9a-zA-Z_$]*/)) {
+                        if(textArr[i][j] === '{') {
+                            console.log("Hit potential object")
+                            let flag = false;
+                            for(let z = j - 1; z >= 0; z--) {
+                                console.log(`Checkinbg ${textArr[i][j]}`)
+                                if(textArr[i][z] === ' ') {} 
+                                else if(textArr[i][z] === '=') {
+                                    console.log("Object found")
+                                    flag = true;
+                                    break;
+                                } else {
+                                    flag = false;
+                                    break;
+                                }
+                            }
+                            if(flag) { 
+                                //We are in an object, and it's member variables don't need to 
+                                //be prefixed, so we skip to the next line
+                                rValStarted = false;
+                                varName = "";
+                                varStarted = false;
+                                break;
+                            }
+                        }
+                    }
+
 
                     if(textArr[i][j] === '.' || textArr[i][j] === '=') {
                         console.log(`Set rVal flag after hitting ${textArr[i][j]}`);
@@ -307,13 +342,10 @@ class CursorPopup extends Component {
                 }
 
                 if(varStarted) {
+                    console.log(`pushing ${varName} from weird if`)
                     varArr.push(varName);
                 }
             }
-        }
-
-        for(let i = 0; i < varArr.length; i ++) {
-            console.log(varArr[i]);
         }
 
         return varArr;
