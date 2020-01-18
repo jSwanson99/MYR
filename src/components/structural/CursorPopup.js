@@ -199,55 +199,52 @@ class CursorPopup extends Component {
                             start = i;
                             end = j;
 
-                            // Since we are flattenning out the function, it won't be able to be called
-                            // which can cause problems(if it is called at other points in code
-                            // ). So below we duplicate the function we are flattening
-                            // Note: this is intentionalled added at the end of the text array so we dont
-                            // mess with our breakout/start/end/any other important indicices we have saved
+                            //Appends function to end of text so we can call it (since it get's flattened)
                             textArr.push(textArr[i].slice(0, textArr[i].indexOf('(') + 1) + ") {");
                             textArr.push(...([...textArr].slice(i + 1, j + 1)));
 
-                            //Comments out return statement of this function
-                            //So it doesnt interfere with our new return statement
-                            for(let k = i; k < j; k ++) {
+                            //Comments out return statement of this function, so it doesnt interfere with our new return statement
+                            for(let k = i; k < j; k ++) 
                                 if(textArr[k].indexOf("return") !== -1)
                                     textArr[k] = "//" + textArr[k];
-                            }
 
+                            //Gets and refactors variables to avoid collisions
                             const varArr = this.findVars([...textArr], start, end);
                             textArr = this.refactorVars([...textArr], [...varArr], start, end);
-
+                            
+                            //Injects the data that allows us to retrieve cursor state
                             textArr = this.injectRetrievableData(textArr, start, end, arr);
                             
-                            const params = this.findParams();
                             const text = textArr.join("\n");
                             let func = null, beforeAfter = null, diff = null;
+
+                            //Checks for params
+                            const params = this.findParams();
+                            //Returns the impact if there are no params..
                             if(!params) {
                                 // eslint-disable-next-line
                                 func = Function(`'use strict'; ${text}`);
                                 beforeAfter = func();
                                 diff = this.getObjDiff(beforeAfter[0], beforeAfter[1]);
-                                if(diff)
-                                    return [diff, "func"];
+                                
+                                return diff ? [diff, "func"] : ["Function made no difference to cursor state", "func"];
                             }
 
+                            //Trys to return normally, and sets up for param input if it fails
                             try {
                                 // eslint-disable-next-line
                                 func = Function(`'use strict'; ${text}`);
                                 beforeAfter = func();   
                                 diff = this.getObjDiff(beforeAfter[0], beforeAfter[1]);
-                                if(diff) {return [diff, "func"];}  
-                                //Params don't need to be returned because they aren't used in
-                                // cursor state setting calls, otherwise we would have gotten an error 
+                                
+                                return diff ? [diff, "func"] : ["Function made no difference to cursor state", "func"];
                             } catch(e) {
                                 console.error(e);
-                                // We have parameters and there was an error on eval
-                                // user is likely setting state with params
+                                // We have parameters and there was an error on eval user is likely setting state with params
                                 return [diff, "func", params, unmodArr];
                             }
-
-                            return ["Function made no difference to cursor state", "func"];
-                        } else {break;}
+                        } else 
+                            break;
                     }
                 }
             }
