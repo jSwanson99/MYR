@@ -11,6 +11,10 @@ class Myr {
         this.assets = [];
         this.res = { els: this.els, assets: this.assets };
         this.sceneEl = document.querySelector("a-scene");
+        this.seed = 0; 
+        this.randCounter = 0;
+        this.oldRandomCounter = 0;
+        this.oldSeed = 0;
         this.cursor = {
             color: "red",
             position: {
@@ -1045,6 +1049,153 @@ class Myr {
     `;
         el.animation__color = anim;
         return outerElId;
+    }
+
+    setSeed = (seed = 0) => {
+        if (seed === 0){
+            let newSeed = new Date().getTime();
+            while(this.seed === newSeed)
+            {
+                newSeed = new Date().getTime();
+            }
+            this.seed = newSeed;
+        }
+        else{
+            this.seed = seed;
+        }
+        this.randCounter = 0;
+    }
+
+    getSeed = () => {
+        return this.seed;
+    }
+
+    getSeedCounter = () => {
+        return this.randCounter;
+    }
+
+    setSeedCounter = (counter = 0) => {
+        this.randCounter = counter;
+    }
+
+    decrementRandCounter = () => {
+        this.randCounter -= 1;
+    }
+
+    randomInt = (min = -40, max = 40) => {
+        let range = max - min;
+        let randNum, seedNum, nextRand;
+
+        if(max <= min)
+        {
+            console.error("Improper use of randomInt");
+            return;
+        }
+
+        if(this.seed === 0)
+        {
+            this.seed = new Date().getTime();
+            this.randCounter = 0;
+        }
+
+        if(this.seed !== 0)
+        {
+            this.randCounter += 1;
+            seedNum = this.seed;
+            while(seedNum < 1000000000)
+            {
+                seedNum *= seedNum;
+            }
+
+            nextRand = this.nextRandom(min, max);
+            this.decrementRandCounter();
+
+            let small = seedNum*0.000000000000000001;
+            let counterPow = this.randCounter * this.randCounter;
+            randNum = (seedNum*Math.PI*counterPow*small*1.543637*9.479137*0.5*nextRand);
+            while(randNum > 100000000000000)
+            {
+                randNum = randNum / 100;
+            }
+            randNum = randNum % range;
+        }
+        randNum = Math.floor(randNum);
+        randNum = randNum + min;
+        return randNum;
+    }
+
+    random = (min = -40, max = 40) => {
+        let range = max - min;
+        let randNum, seedNum, nextRand;
+
+        if(max <= min)
+        {
+            console.error("Improper use of randomInt");
+            return;
+        }
+
+        if(this.seed === 0)
+        {
+            this.seed = new Date().getTime();
+            this.randCounter = 0;
+        }
+
+        if(this.seed !== 0)
+        {
+            this.randCounter += 1;
+            seedNum = this.seed;
+            while(seedNum < 1000000000)
+            {
+                seedNum *= seedNum;
+            }
+
+            nextRand = this.nextRandom(min, max);
+            this.decrementRandCounter();
+
+            let small = seedNum*0.000000000000000001;
+            let counterPow = this.randCounter * this.randCounter;
+            randNum = (seedNum*Math.PI*counterPow*small*1.543637*7.479137*0.5*nextRand);
+            while(randNum > 100000000000000)
+            {
+                randNum = randNum / 100;
+            }
+            randNum = randNum % range;
+        }
+
+        randNum = randNum + min;
+        return randNum;
+    }
+
+    nextRandom = (min = -40, max = 40) => {
+        let range = max - min;
+        let randNum, seedNum;
+
+        this.randCounter += 1;
+        seedNum = this.seed;
+        while(seedNum < 1000000000)
+        {
+            seedNum *= seedNum;
+        }
+
+        let small = seedNum*0.000000000000000001;
+        let counterPow = this.randCounter * this.randCounter;
+        randNum = (seedNum*Math.PI*counterPow*small*1.543637*7.479137*0.5);
+        while(randNum > 100000000000000)
+        {
+            randNum = randNum / 100;
+        }
+        randNum = randNum % range;
+
+        randNum = randNum + min;
+        if(randNum < 0)
+        {
+            randNum = 0 - randNum;
+        }
+        else if (randNum === 0)
+        {
+            randNum++;
+        }
+        return randNum;
     }
 
     /********************* GETTERS *********************/
