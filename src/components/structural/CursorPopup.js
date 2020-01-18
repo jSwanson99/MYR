@@ -66,7 +66,7 @@ class CursorPopup extends Component {
                         params: null,
                         textArr : null,
                         breakpoint: selectionRange,
-                        noDiff: false
+                        noDiff: false,
                     });
                 //If we clicked on text in a function
                 } else if(type === "func"){
@@ -180,8 +180,6 @@ class CursorPopup extends Component {
         const unmodArr = [...textArr];
         let start, end;
 
-        console.log(textArr.length);
-
         for(let i = 0; i < textArr.length && i <= breakpoint; i ++) {
             if(textArr[i].indexOf("function") !== -1 || textArr[i].indexOf("=>") !== -1) {
                 if((textArr[i].indexOf("function") !== -1 || textArr[i].indexOf("=>") !== -1) && (textArr[i].indexOf("{") === -1)){
@@ -201,39 +199,36 @@ class CursorPopup extends Component {
                             start = i;
                             end = j;
 
+                            // Since we are flattenning out the function, it won't be able to be called
+                            // which can cause problems(if it is called at other points in code
+                            // ). So below we duplicate the function we are flattening
+                            // Note: this is intentionalled added at the end of the text array so we dont
+                            // mess with our breakout/start/end/any other important indicices we have saved
+                            textArr.push(textArr[i].slice(0, textArr[i].indexOf('(') + 1) + ") {");
+                            textArr.push(...([...textArr].slice(i + 1, j + 1)));
+
                             //Comments out return statement of this function
                             //So it doesnt interfere with our new return statement
-
                             for(let k = i; k < j; k ++) {
                                 if(textArr[k].indexOf("return") !== -1)
                                     textArr[k] = "//" + textArr[k];
                             }
 
-                            console.log(textArr[j])
-
                             const varArr = this.findVars([...textArr], start, end);
-                            
                             textArr = this.refactorVars([...textArr], [...varArr], start, end);
 
-                            textArr.splice(start, 0, "resetCursor();"); //Resets cursor before function body
-                            textArr.splice(start, 0, `let ${arr} = [];`);  //Creates array
-                            textArr.splice(start + 2, 1);
-                            textArr.splice(start+2, 0, `${arr}.push(JSON.parse(JSON.stringify(getCursor())));`);    //Stores value at beginning of function body
-                            textArr.splice(end+3, 0, `return ${arr};`);  //All values get returned at end
-                            textArr.splice(end+3, 0, `${arr}.push(JSON.parse(JSON.stringify(getCursor())));`);    //Stores value at beginning of each loop iteration in it
-                            textArr.splice(end + 2, 1);
+                            textArr = this.injectRetrievableData(textArr, start, end, arr);
                             
                             const params = this.findParams();
                             const text = textArr.join("\n");
                             let func = null, beforeAfter = null, diff = null;
                             if(!params) {
-                                console.log("a");
                                 // eslint-disable-next-line
                                 func = Function(`'use strict'; ${text}`);
                                 beforeAfter = func();
                                 diff = this.getObjDiff(beforeAfter[0], beforeAfter[1]);
                                 if(diff)
-                                {return [diff, "func"];}
+                                    return [diff, "func"];
                             }
 
                             try {
@@ -241,19 +236,16 @@ class CursorPopup extends Component {
                                 func = Function(`'use strict'; ${text}`);
                                 beforeAfter = func();   
                                 diff = this.getObjDiff(beforeAfter[0], beforeAfter[1]);
-                                console.log("b");
                                 if(diff) {return [diff, "func"];}  
                                 //Params don't need to be returned because they aren't used in
                                 // cursor state setting calls, otherwise we would have gotten an error 
                             } catch(e) {
-                                console.log(textArr.length)
-                                console.log(e);
+                                console.error(e);
                                 // We have parameters and there was an error on eval
                                 // user is likely setting state with params
                                 return [diff, "func", params, unmodArr];
                             }
 
-                            console.log("d");
                             return ["Function made no difference to cursor state", "func"];
                         } else {break;}
                     }
@@ -261,6 +253,18 @@ class CursorPopup extends Component {
             }
         }
         return null;
+    }
+
+    injectRetrievableData = (textArr, start, end, arr) => {
+        textArr.splice(start, 0, "resetCursor();"); //Resets cursor before function body
+        textArr.splice(start, 0, `let ${arr} = [];`);  //Creates array
+        textArr.splice(start + 2, 1);
+        textArr.splice(start+2, 0, `${arr}.push(JSON.parse(JSON.stringify(getCursor())));`);    //Stores value at beginning of function body
+        textArr.splice(end+3, 0, `return ${arr};`);  //All values get returned at end
+        textArr.splice(end+3, 0, `${arr}.push(JSON.parse(JSON.stringify(getCursor())));`);    //Stores value at beginning of each loop iteration in it
+        textArr.splice(end + 2, 1);
+
+        return textArr;
     }
     
     //Finds variables local to a segment of text
@@ -310,7 +314,6 @@ class CursorPopup extends Component {
                             varStarted = false;
                             varName = "";
                         } else {
-                            console.log(`Terminated rVal after hitting ${textArr[i][j]}`);
                             varStarted = false;
                             varName = "";
                             rValStarted = false;
@@ -324,7 +327,6 @@ class CursorPopup extends Component {
                             for(let z = j - 1; z >= 0; z--) {
                                 if(textArr[i][z] === ' ') {} 
                                 else if(textArr[i][z] === '=') {
-                                    console.log("Object found")
                                     flag = true;
                                     break;
                                 } else {
@@ -343,16 +345,12 @@ class CursorPopup extends Component {
                         }
                     }
 
-                    if(textArr[i][j] === '.' || textArr[i][j] === '=') {
-                        console.log(`Set rVal flag after hitting ${textArr[i][j]}`);
+                    if(textArr[i][j] === '.' || textArr[i][j] === '=') 
                         rValStarted = true;
-                    }
 
                 }
-
-                if(varStarted) {
+                if(varStarted) 
                     varArr.push(varName);
-                }
             }
         }
 
@@ -368,47 +366,7 @@ class CursorPopup extends Component {
         }
 
         const prefix = "__extendedPrefixToAvoidCollisions__";
-        console.log("Variable list: ", varArr);
-        const prefixedVars = varArr.map( el => {
-            return prefix.concat(el);
-        });
-        console.log("Prefixed variables: ", prefixedVars)
-
-        /*
-        //Check header for var matches
-        if(textArr[start].indexOf(')') - 1 !== textArr[start].indexOf('(')) {
-            console.log("asdasda")
-            //We have arguements being passed in
-            for(let j = 0; j < varArr.length; j ++) {
-                let str = textArr[start];
-                let vari = varArr[j];
-                console.log("***looking for", vari)
-                let ind = 0;
-
-                do {
-                    let nextChar = str.slice(str.indexOf(vari, ind) + vari.length, str.indexOf(vari, ind) + vari.length + 1);
-                    let prevChar = str.slice(str.indexOf(vari, ind) - 1, str.indexOf(vari, ind));
-                    //Attempt to slice out the variable
-                    let temp = str.slice(str.indexOf(vari, ind), str.indexOf(vari, ind) + vari.length)
-                    //Make sure the variable doesn't continue into the next varaible
-
-                    console.log(`prevChar: ${prevChar} temp: ${temp} nextChar: ${nextChar}`)
-
-                    if(temp === vari && checkBorderLetters(nextChar, prevChar) && nextChar !== "") {
-                        let firstHalf = str.slice(0, str.indexOf(vari, ind));
-                        let refactoredVar = prefixedVars[j];
-                        let secondHalf = str.slice(str.indexOf(vari, ind) + vari.length);
-                        
-                        //Rebuilds string with refactored variable
-                        str = firstHalf + refactoredVar + secondHalf;
-                        textArr[start] = str;
-                        console.log(textArr[start]);
-                    }
-                    ind += vari.length;
-                } while(str.indexOf(vari, ind) !== -1 && ind < str.length);
-            }
-        }
-        */
+        const prefixedVars = varArr.map( el => { return prefix.concat(el); });
 
         //Check function body for var matches
         for(let j = start + 1; j <= end ; j ++) {
@@ -430,7 +388,6 @@ class CursorPopup extends Component {
                         prevChar = str.slice(str.indexOf(varArr[i], ind) - 1, str.indexOf(varArr[i], ind));
                     
                         if(temp === varArr[i] && checkBorderLetters(nextChar, prevChar)) {
-                            console.log(`refactoring ${varArr[i]}`)
                             let firstHalf = str.slice(0, str.indexOf(varArr[i], ind));
                             let refactoredVar = prefixedVars[i];
                             let secondHalf = str.slice(str.indexOf(varArr[i], ind) + varArr[i].length);
@@ -443,9 +400,6 @@ class CursorPopup extends Component {
             }
             textArr[j] = str;
         }
-
-        console.log(textArr)
-
         return textArr;
     }
 
@@ -480,14 +434,13 @@ class CursorPopup extends Component {
 
     handleRenderParams = () => {
         let textArr = [...this.state.textArr];
-        console.log(textArr.length);
         let enteredValues = new Map();
         let start, end;
 
         for(let i = 0; i < this.state.params.length; i ++) {
             let val = document.getElementById(this.state.params[i]).value;
             if(val === "")
-            {val = null;}
+                val = null;
             enteredValues.set(this.state.params[i], val);
         }
 
@@ -525,10 +478,7 @@ class CursorPopup extends Component {
         }
         
         try {
-            console.log(`Breakpoint at: ${textArr[tempBreakpoint]}`)
             const diff = this.detectFunctionBody(textArr, tempBreakpoint)[0];
-
-            console.log(diff)
 
             window.setTimeout(
                 () => {
@@ -554,7 +504,6 @@ class CursorPopup extends Component {
 
         const hasLoop = i => {
             if(textArr[i].indexOf("while(") !== -1 || textArr[i].indexOf("for(") !== -1 || textArr[i].indexOf("do {") !== -1) {
-                console.log(i+1)
                 return true;
             }
             return false;
@@ -607,7 +556,6 @@ class CursorPopup extends Component {
         endOfOuterLoop = -1;
 
         if(numLoops > 0) {
-            console.log('z')
             for(let i = 0; i < textArr.length && i <= breakpoint; i ++) {
                 if(hasLoop(i)) {
                     extraCurlyCounter = 0;
@@ -645,7 +593,6 @@ class CursorPopup extends Component {
             let func = Function(`'use strict'; ${text}`);
             return func();
         }
-        console.log("rn")
         return null;
     }
     
