@@ -83,7 +83,7 @@ class CursorPopup extends Component {
                         isFunc: true,
                         params: param,
                         textArr: textArr,
-                        breakpoint: selectionRange + 1,
+                        breakpoint: selectionRange,
                         noDiff: tempDiff
                     });
                 //If we clicked on text in a loop
@@ -220,6 +220,7 @@ class CursorPopup extends Component {
 
                             //Checks for params
                             const params = this.findParams();
+
                             //Returns the impact if there are no params..
                             if(!params) {
                                 // eslint-disable-next-line
@@ -458,6 +459,7 @@ class CursorPopup extends Component {
                 }
             }
         }
+
         let tempBreakpoint = this.state.breakpoint;
 
         for(let i = start; i <= end; i ++) {
