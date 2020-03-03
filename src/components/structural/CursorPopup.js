@@ -200,8 +200,16 @@ class CursorPopup extends Component {
                             end = j;
 
                             //Appends function to end of text so we can call it (since it get's flattened)
-                            textArr.push(textArr[i].slice(0, textArr[i].indexOf('(') + 1) + ") {");
-                            textArr.push(...([...textArr].slice(i + 1, j + 1)));
+                            const funcDef = [...textArr].slice(start + 1, end + 1);
+
+                            //We store the starting and ending points of this function so it can easily be refactored later
+                            // the + 3 accomodates for the additions we have when we call injectRetrievableData
+                            const startOfAppendedFunc = textArr.length + 3 - 1;
+                            const endOfAppendedFunc = textArr.length + funcDef.length + 3 - 1;
+
+                            textArr.push(textArr[start].slice(0, textArr[start].indexOf('(') + 1) + ') {')
+
+                            textArr.push(...funcDef);
 
                             //Comments out return statement of this function, so it doesnt interfere with our new return statement
                             for(let k = i; k < j; k ++) 
@@ -220,6 +228,19 @@ class CursorPopup extends Component {
 
                             //Checks for params
                             const params = this.findParams();
+
+                            //We have all the params known now, we so can refactor the appended func to avoid collisions with our flattened function
+                            textArr = this.refactorVars([...textArr], params, startOfAppendedFunc, endOfAppendedFunc, "__extendedPrefixToAvoidCollisionsForCopyFunc__");
+
+                            console.log(textArr.join('\n'))
+
+                            console.log(textArr.filter( (line, ind) => {
+                                
+                                if(line.indexOf("position") !== -1) {
+                                    console.log(ind) 
+                                    return true;
+                                } 
+                            }));
 
                             //Returns the impact if there are no params..
                             if(!params) {
@@ -356,14 +377,13 @@ class CursorPopup extends Component {
     }
 
     //Refactors variable names to avoid name collisions when the function gets flattened
-    refactorVars = (textArr, varArr, start, end) => {
+    refactorVars = (textArr, varArr, start, end, prefix = "__extendedPrefixToAvoidCollisions__") => {
         const checkBorderLetters = (nextChar, prevChar) => {
             if((nextChar === undefined || !nextChar.match(/[a-zA-Z_$][0-9a-zA-Z_$]*/)) && !(prevChar.match(/[a-zA-Z_$][0-9a-zA-Z_$]*/)))
                 return true;
             return false;
         }
 
-        const prefix = "__extendedPrefixToAvoidCollisions__";
         const prefixedVars = varArr.map( el => { return prefix.concat(el); });
 
         //Check function body for var matches
@@ -475,6 +495,9 @@ class CursorPopup extends Component {
                 } 
             }
         }
+
+        console.log(textArr.join('\n'))
+
         
         try {
             const diff = this.detectFunctionBody(textArr, tempBreakpoint)[0];
